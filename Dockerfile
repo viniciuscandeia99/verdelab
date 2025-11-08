@@ -27,8 +27,9 @@ RUN php artisan config:clear && \
     php artisan view:clear && \
     php artisan route:clear
 
-# A criação do APP_KEY é mantida, pois é necessária para o cache
-RUN php artisan key:generate --force
+# Garante que a chave seja gerada sem depender do .env.
+# O comando '--env' não é necessário aqui pois estamos usando o ENV do Docker.
+# RUN php artisan key:generate --force
 
 # Corrige permissões
 # Mude para 777 apenas para storage e bootstrap/cache, para que o Apache possa escrever
