@@ -19,10 +19,6 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Instala as dependências do Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Gera a APP_KEY e executa migrations (não falha se já existir)
-RUN php artisan key:generate || true && \
-    php artisan migrate --seed --force || true
-
 # Ajusta permissões
 RUN chmod -R 775 storage bootstrap/cache
 
@@ -39,8 +35,16 @@ RUN echo "<VirtualHost *:80>\n\
 # Ativa o mod_rewrite
 RUN a2enmod rewrite
 
+# ⚙️ Limpa caches e gera chave da aplicação
+RUN php artisan key:generate --force || true && \
+    php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan view:clear && \
+    php artisan route:clear && \
+    php artisan migrate --seed --force || true
+
 # Expõe porta
 EXPOSE 80
 
-# Inicia Apache
+# Inicia o Apache
 CMD ["apache2-foreground"]
