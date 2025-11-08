@@ -10,7 +10,10 @@ COPY . .
 RUN apt-get update && apt-get install -y \
     unzip \
     libsqlite3-dev \
-    && docker-php-ext-install pdo pdo_sqlite
+    # Instala GD para manipulação de imagem, se necessário, e outras extensões comuns
+    libpng-dev \
+    libjpeg-dev \
+    && docker-php-ext-install pdo pdo_sqlite gd
 
 # Instala o Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -18,20 +21,20 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 # Instala dependências do Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-RUN mkdir -p /var/www/html/database && touch /var/www/html/database/database.sqlite
-ENV DB_CONNECTION=sqlite
-ENV DB_DATABASE=/var/www/html/database/database.sqlite
-
-# Gera APP_KEY e roda migrations + seeders (não quebra se já existir)
-RUN php artisan key:generate --force || true && \
-    php artisan migrate --seed --force || true && \
-    php artisan config:clear && \
+# Limpeza de caches (mantido no RUN para otimizar o build)
+RUN php artisan config:clear && \
     php artisan cache:clear && \
     php artisan view:clear && \
     php artisan route:clear
 
+# A criação do APP_KEY é mantida, pois é necessária para o cache
+RUN php artisan key:generate --force
+
 # Corrige permissões
-RUN chmod -R 775 storage bootstrap/cache database
+# Mude para 777 apenas para storage e bootstrap/cache, para que o Apache possa escrever
+# A pasta 'database' será montada pelo disco do Render, então a permissão deve ser tratada pelo Render.
+RUN chown -R www-data:www-data storage bootstrap/cache && \
+    chmod -R 775 storage bootstrap/cache
 
 # Configura o Apache pra rodar o Laravel
 RUN echo "<VirtualHost *:80>\n\
@@ -47,4 +50,10 @@ RUN a2enmod rewrite
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+# Comando de Início (CMD)
+# O Render Web Service não usará este CMD se você definir um "Start Command" no painel.
+# Vamos criar um script para o CMD que lida com as migrations.
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+CMD ["entrypoint.sh"]
