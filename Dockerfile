@@ -1,13 +1,12 @@
-# Usa imagem base com PHP e Apache
+# Usa PHP com Apache
 FROM php:8.2-apache
 
-# Define o diretório de trabalho
 WORKDIR /var/www/html
 
-# Copia o conteúdo do projeto
+# Copia todo o projeto
 COPY . .
 
-# Instala dependências do sistema e extensões necessárias
+# Instala dependências do sistema e PHP
 RUN apt-get update && apt-get install -y \
     unzip \
     libsqlite3-dev \
@@ -16,35 +15,36 @@ RUN apt-get update && apt-get install -y \
 # Instala o Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Instala as dependências do Laravel
+# Instala dependências do Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Ajusta permissões
-RUN chmod -R 775 storage bootstrap/cache
+RUN mkdir -p /var/www/html/database && touch /var/www/html/database/database.sqlite
+ENV DB_CONNECTION=sqlite
+ENV DB_DATABASE=/var/www/html/database/database.sqlite
 
-# 🧩 Configura o Apache pra apontar pra pasta 'public'
+# Gera APP_KEY e roda migrations + seeders (não quebra se já existir)
+RUN php artisan key:generate --force || true && \
+    php artisan migrate --seed --force || true && \
+    php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan view:clear && \
+    php artisan route:clear
+
+# Corrige permissões
+RUN chmod -R 775 storage bootstrap/cache database
+
+# Configura o Apache pra rodar o Laravel
 RUN echo "<VirtualHost *:80>\n\
     DocumentRoot /var/www/html/public\n\
     <Directory /var/www/html/public>\n\
         AllowOverride All\n\
-        Options Indexes FollowSymLinks\n\
+        Options FollowSymLinks\n\
         Require all granted\n\
     </Directory>\n\
 </VirtualHost>" > /etc/apache2/sites-available/000-default.conf
 
-# Ativa o mod_rewrite
 RUN a2enmod rewrite
 
-# ⚙️ Limpa caches e gera chave da aplicação
-RUN php artisan key:generate --force || true && \
-    php artisan config:clear && \
-    php artisan cache:clear && \
-    php artisan view:clear && \
-    php artisan route:clear && \
-    php artisan migrate --seed --force || true
-
-# Expõe porta
 EXPOSE 80
 
-# Inicia o Apache
 CMD ["apache2-foreground"]
