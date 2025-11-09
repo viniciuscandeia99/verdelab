@@ -37,39 +37,6 @@ O VerdeLab tem como propósito auxiliar empresas, escolas ou órgãos públicos 
 
 ---
 
-## 🧠 Estrutura Principal
-
-VerdeLab/
-│
-├── app/
-│ ├── Http/Controllers/
-│ │ ├── SetorController.php
-│ │ ├── ConsumoController.php
-│ │ └── AcaoController.php
-│ └── Models/
-│ ├── Setor.php
-│ ├── Consumo.php
-│ └── Acao.php
-│
-├── database/
-│ ├── migrations/
-│ ├── seeders/
-│ └── factories/
-│
-├── resources/
-│ ├── views/
-│ │ ├── layouts/
-│ │ ├── setores/
-│ │ ├── consumos/
-│ │ └── acoes/
-│
-├── routes/
-│ └── web.php
-│
-└── .env
-
----
-
 ## 🧑‍💻 Instalação Local
 
 > Requisitos: PHP 8+, Composer e XAMPP instalados.
